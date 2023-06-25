@@ -29,10 +29,8 @@ pub fn get_all_books() -> Vec<Book> {
 
     let mut conn = establish_connection();
 
-    let results = books
+    books
         .filter(deleted.eq(false))
         .load::<Book>(&mut conn)
-        .expect("Error loading posts");
-        
-    results
+        .expect("Error loading posts")
 }

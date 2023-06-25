@@ -1,37 +1,10 @@
-use db::establish_connection;
-use models::Book;
-use serde_json::json;
-use graphul::{http::Methods, Graphul, Context, extract::Json};
-use serde::{Deserialize, Serialize};
+use graphul::{http::Methods, Graphul};
+use controllers::books::{create_book, get_books};
 
 mod db;
 mod models;
 mod schema;
-
-#[derive(Serialize, Deserialize)]
-struct BookDto {
-    pub title: String,
-    pub description: String,
-    pub author: String,
-}
-
-impl Default for BookDto {
-    fn default() -> Self {
-        Self {
-            title: String::from(""),
-            description: String::from(""),
-            author: String::from(""),
-        }
-    }
-
-}
-
-async fn get_books()  -> Json<Vec<Book>> {
-
-    let books = db::get_all_books();
-
-    Json(books)
-}
+mod controllers;
 
 #[tokio::main]
 async fn main() {
@@ -39,27 +12,7 @@ async fn main() {
 
   app.get("/books", get_books);
 
-  app.post("/create", |c: Context| async move {
-
-
-      let book_data = match c.payload::<BookDto>().await {
-          Ok(data) => data,
-          Err(_) => {
-              return "Failed to parse book, check fields title, author, description";
-          },
-      };
-
-      
-      let book = models::NewBook {
-          title: book_data.title.as_str(),
-          author: book_data.author.as_str(),
-          description: book_data.description.as_str(),
-      };
-
-      db::create_book(&mut establish_connection(), &book);
-
-      "Book created"
-  });
+  app.post("/create", create_book);
   // routes out of the scope of the middleware
   app.get("/login", || async {
       "Login page"
