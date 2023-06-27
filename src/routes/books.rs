@@ -1,5 +1,5 @@
+use crate::controllers::books::{create_book, delete_book, get_books, update_book};
 use graphul::{http::Methods, Graphul};
-use crate::controllers::books::{create_book, get_books, update_book, delete_book};
 
 pub fn book_router() -> Graphul {
     let mut book_router = Graphul::new();
@@ -11,4 +11,3 @@ pub fn book_router() -> Graphul {
 
     book_router
 }
-

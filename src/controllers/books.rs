@@ -1,18 +1,8 @@
-use crate::db::{BooksRepository};
 use crate::models::Book;
-use graphul::{Context, extract::Json, http::utils::Response};
-use serde::{Deserialize, Serialize};
+use crate::{db::BooksRepository, dto::books::BookDto};
+use graphul::{extract::Json, http::utils::Response, Context};
 
-
-#[derive(Serialize, Deserialize, Default)]
-struct BookDto {
-    pub title: String,
-    pub description: String,
-    pub author: String,
-    pub published: bool,
-}
-
-pub async fn get_books()  -> Json<Vec<Book>> {
+pub async fn get_books() -> Json<Vec<Book>> {
     let mut repo = BooksRepository::new();
 
     let books = repo.get_all_books();
@@ -34,21 +24,15 @@ fn book_validation(book: &BookDto) -> Result<(), String> {
     Ok(())
 }
 
-
 pub async fn create_book(c: Context) -> Response<String> {
     let mut repo = BooksRepository::new();
     let book_data = match c.payload::<BookDto>().await {
         Ok(data) => data,
         Err(e) => {
-
             let error = format!("Failed to create book, error: {}", e.body_text().as_str());
-            return Response::builder()
-                .status(400)
-                .body(error)
-                .unwrap()
-        },
+            return Response::builder().status(400).body(error).unwrap();
+        }
     };
-
 
     match book_validation(&book_data) {
         Ok(_) => {}
@@ -72,23 +56,17 @@ pub async fn create_book(c: Context) -> Response<String> {
         .unwrap()
 }
 
-
 pub async fn update_book(c: Context) -> Response<String> {
     let mut repo = BooksRepository::new();
     let id = c.params("id").parse::<i32>().unwrap();
- 
+
     let book_data = match c.payload::<BookDto>().await {
         Ok(data) => data,
         Err(e) => {
-
             let error = format!("Failed to create book, error: {}", e.body_text().as_str());
-            return Response::builder()
-                .status(400)
-                .body(error)
-                .unwrap()
-        },
+            return Response::builder().status(400).body(error).unwrap();
+        }
     };
-
 
     match book_validation(&book_data) {
         Ok(_) => {}
@@ -104,7 +82,15 @@ pub async fn update_book(c: Context) -> Response<String> {
         published: book_data.published,
     };
 
-    repo.update_book(id, &book);
+    match repo.update_book(id, &book) {
+        Ok(_) => {}
+        Err(_) => {
+            return Response::builder()
+                .status(404)
+                .body("Book not found or not exist".to_string())
+                .unwrap();
+        }
+    }
 
     Response::builder()
         .status(201)
@@ -116,11 +102,15 @@ pub async fn delete_book(c: Context) -> Response<String> {
     let mut repo = BooksRepository::new();
     let id = c.params("id").parse::<i32>().unwrap();
 
-    repo.delete_book(id);
+    let book = match repo.delete_book(id) {
+        Ok(b) => b,
+        Err(_) => {
+            return Response::builder().status(404).body("Book not found or not exist".to_string()).unwrap();
+        }
+    };
 
     Response::builder()
-        .status(201)
-        .body("Book deleted".to_string())
+        .status(200)
+        .body(book.to_string())
         .unwrap()
-
 }
