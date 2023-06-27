@@ -1,22 +1,17 @@
-use graphul::{http::Methods, Graphul};
-use controllers::books::{create_book, get_books};
+use graphul::Graphul;
+use routes::books::book_router;
 
 mod db;
 mod models;
 mod schema;
 mod controllers;
+mod routes;
 
 #[tokio::main]
 async fn main() {
   let mut app = Graphul::new();
 
-  app.get("/books", get_books);
-
-  app.post("/create", create_book);
-  // routes out of the scope of the middleware
-  app.get("/login", || async {
-      "Login page"
-  });
+  app.add_router(book_router());
 
   app.run("127.0.0.1:8000").await;
 }

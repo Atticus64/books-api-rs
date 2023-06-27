@@ -13,11 +13,21 @@ pub struct Book {
     pub deleted: bool,
 }
 
+#[derive(Queryable, Selectable, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = books)]
+pub struct BookData {
+    pub title: String,
+    pub description: String,
+    pub author: String,
+    pub published: bool,
+}
+
 #[derive(Insertable)]
 #[diesel(table_name = books)]
 pub struct NewBook<'a> {
     pub title: &'a str,
     pub description: &'a str,
     pub author: &'a str,
+    pub published: bool,
 }
 

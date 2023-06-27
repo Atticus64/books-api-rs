@@ -3,7 +3,11 @@ use diesel::prelude::*;
 use dotenvy::dotenv;
 use std::env;
 
-use crate::models::{Book, NewBook};
+use crate::models::{Book, NewBook, BookData};
+
+pub struct BooksRepository {
+    conn: PgConnection,
+}
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
@@ -13,24 +17,62 @@ pub fn establish_connection() -> PgConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-pub fn create_book(conn: &mut PgConnection, new_book: &NewBook) -> Book {
-    use crate::schema::books;
 
-    diesel::insert_into(books::table)
-        .values(new_book)
-        .returning(Book::as_returning())
-        .get_result(conn)
-        .expect("Error saving new post")
+impl BooksRepository {
+    pub fn new() -> Self {
+        Self { 
+            conn: establish_connection()
+        }
+    }
+
+    pub fn get_all_books(&mut self) -> Vec<Book> {
+        use crate::schema::books::dsl::*;
+
+        books
+            .filter(deleted.eq(false))
+            .load::<Book>(&mut self.conn)
+            .expect("Error loading posts")
+    }
+
+    pub fn create_book(&mut self, new_book: &NewBook) -> Book {
+        use crate::schema::books::dsl::*;
+
+        diesel::insert_into(books)
+            .values(new_book)
+            .returning(Book::as_returning())
+            .get_result(&mut self.conn)
+            .expect("Error saving new post")
+    }
+
+    pub fn update_book(&mut self, identifier: i32, new_book: &NewBook) -> Book {
+        use crate::schema::books::dsl::*;
+
+        let data = BookData {
+            title: new_book.title.to_string(),
+            description: new_book.description.to_string(),
+            author: new_book.author.to_string(),
+            published: new_book.published,
+        };
+
+        diesel::update(books)
+            .set(data)
+            .filter(id.eq(identifier))
+            .returning(Book::as_returning())
+            .get_result(&mut self.conn)
+            .expect("Error saving new post")
+    }
+
+    pub fn delete_book(&mut self, identifier: i32) {
+        
+        use crate::schema::books::dsl::*;
+
+        diesel::update(books)
+            .set(deleted.eq(true))
+            .filter(id.eq(identifier))
+            .execute(&mut self.conn)
+            .expect("Error deleting book");
+
+    }
 }
 
 
-pub fn get_all_books() -> Vec<Book> {
-    use crate::schema::books::dsl::*;
-
-    let mut conn = establish_connection();
-
-    books
-        .filter(deleted.eq(false))
-        .load::<Book>(&mut conn)
-        .expect("Error loading posts")
-}
