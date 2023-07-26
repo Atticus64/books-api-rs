@@ -1,6 +1,8 @@
-
 use crate::models::Book;
-use crate::{db::BooksRepository, dto::books::{BookDto, UpdateBookDto}};
+use crate::{
+    db::BooksRepository,
+    dto::books::{BookDto, UpdateBookDto},
+};
 use graphul::{extract::Json, http::utils::Response, Context};
 
 pub async fn get_books() -> Result<Json<Vec<Book>>, Response<String>> {
@@ -56,16 +58,36 @@ pub async fn create_book(c: Context) -> Response<String> {
         published: book_data.published,
     };
 
-    
     let (message, status) = match repo.create_book(&book) {
         Ok(_) => ("Book created", 201),
-        Err(_) => ("Failed to create book", 400)
+        Err(_) => ("Failed to create book", 400),
     };
 
     Response::builder()
         .status(status)
         .body(message.to_string())
         .unwrap()
+}
+
+fn check_payload(payload_book: &UpdateBookDto) -> bool {
+    if payload_book.title.is_none()
+        && payload_book.description.is_none()
+        && payload_book.author.is_none()
+        && payload_book.published.is_none()
+    {
+        false
+    } else {
+        true
+    }
+}
+
+fn validate_payload(payload_book: UpdateBookDto, mut book: Book) -> Book {
+    book.title = payload_book.title.unwrap_or(book.title);
+    book.author = payload_book.author.unwrap_or(book.author);
+    book.description = payload_book.description.unwrap_or(book.description);
+    book.published = payload_book.published.unwrap_or(book.published);
+
+    book
 }
 
 pub async fn update_book(c: Context) -> Response<String> {
@@ -80,11 +102,19 @@ pub async fn update_book(c: Context) -> Response<String> {
         }
     };
 
-    
+    let valid = check_payload(&book_data.0);
+
+    if !valid {
+        return Response::builder()
+            .status(400)
+            .body("Book is not valid".to_string())
+            .unwrap();
+    }
+
     let book = repo.find_book(id);
-    
+
     match book {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {
             return Response::builder()
                 .status(404)
@@ -92,27 +122,23 @@ pub async fn update_book(c: Context) -> Response<String> {
                 .unwrap();
         }
     }
-    
-    
+
     let b = book.unwrap();
-    let title_change = book_data.title.as_ref().unwrap_or(&b.title);
-    let author_change = book_data.author.as_ref().unwrap_or(&b.author);
-    let desc_change = book_data.description.as_ref().unwrap_or(&b.description);
-    
+    let data = validate_payload(book_data.0, b);
+
     let book = crate::models::NewBook {
-        title: title_change.as_str(),
-        author: author_change.as_str(),
-        description: desc_change.as_str(),    
-        published: book_data.published.unwrap_or(b.published),
+        title: data.title.as_str(),
+        author: data.author.as_str(),
+        description: data.description.as_str(),
+        published: data.published,
     };
 
-    
     match repo.update_book(id, &book) {
         Ok(_) => {}
         Err(_) => {
             return Response::builder()
-                .status(404)
-                .body("Book not found or not exist".to_string())
+                .status(400)
+                .body("Failed to update book".to_string())
                 .unwrap();
         }
     }

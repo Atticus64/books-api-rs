@@ -8,7 +8,7 @@ pub struct BookDto {
     pub published: bool,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct UpdateBookDto {
     pub title: Option<String>,
     pub description: Option<String>,
