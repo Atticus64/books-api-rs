@@ -70,15 +70,10 @@ pub async fn create_book(c: Context) -> Response<String> {
 }
 
 fn check_payload(payload_book: &UpdateBookDto) -> bool {
-    if payload_book.title.is_none()
+    !(payload_book.title.is_none()
         && payload_book.description.is_none()
         && payload_book.author.is_none()
-        && payload_book.published.is_none()
-    {
-        false
-    } else {
-        true
-    }
+        && payload_book.published.is_none())
 }
 
 fn validate_payload(payload_book: UpdateBookDto, mut book: Book) -> Book {
